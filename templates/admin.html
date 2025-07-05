@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Flaks Music API{% endblock %}
+
+{% block content %}
+{% if not session.get('admin_logged_in') %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="admin-login-card">
+                <div class="card-header">
+                    <h3 class="text-center">Admin Login</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_login_post') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="admin-header">
+                <h1>Admin Dashboard</h1>
+                <p class="text-muted">Manage API keys and monitor usage</p>
+                <div class="admin-branding">
+                    <a href="https://t.me/INNOCENT_FUCKER" class="btn btn-outline-primary btn-sm" target="_blank">
+                        <i class="fab fa-telegram"></i> API Owner
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <div class="stats-content">
+                    <h3 id="totalKeys">{{ api_keys|length }}</h3>
+                    <p>Total API Keys</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stats-content">
+                    <h3 id="totalRequests">{{ usage_stats|length }}</h3>
+                    <p>Total Requests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stats-content">
+                    <h3 id="activeUsers">{{ api_keys|selectattr('is_active')|list|length }}</h3>
+                    <p>Active Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stats-content">
+                    <h3 id="revenue">₹{{ (api_keys|length * 99)|string }}</h3>
+                    <p>Monthly Revenue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="admin-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>API Key Management</h3>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createKeyModal">
+                        <i class="fas fa-plus me-2"></i>Create New API Key
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="apiKeysTable">
+                            <thead>
+                                <tr>
+                                    <th>Owner</th>
+                                    <th>API Key</th>
+                                    <th>Daily Limit</th>
+                                    <th>Used Today</th>
+                                    <th>Total Requests</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key in api_keys %}
+                                <tr>
+                                    <td>{{ key.owner_name }}</td>
+                                    <td>
+                                        <code class="api-key-display">{{ key.api_key[:8] }}...{{ key.api_key[-4:] }}</code>
+                                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyApiKey('{{ key.api_key }}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+                                    <td>{{ key.daily_limit }}</td>
+                                    <td>{{ key.requests_today }}</td>
+                                    <td>{{ key.total_requests }}</td>
+                                    <td>{{ key.expires_at.strftime('%Y-%m-%d') if key.expires_at else 'Never' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if key.is_active else 'danger' }}">
+                                            {{ 'Active' if key.is_active else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteApiKey('{{ key.api_key }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="admin-card">
+                <div class="card-header">
+                    <h3>Usage Analytics</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="usageChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="admin-card">
+                <div class="card-header">
+                    <h3>Recent Activity</h3>
+                </div>
+                <div class="card-body">
+                    <div class="activity-list">
+                        {% for stat in usage_stats[:10] %}
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-{{ 'check' if stat.success else 'times' }}"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="mb-1">{{ stat.query }}</p>
+                                <small class="text-muted">{{ stat.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create API Key Modal -->
+<div class="modal fade" id="createKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createKeyForm">
+                    <div class="mb-3">
+                        <label for="ownerName" class="form-label">Owner Name</label>
+                        <input type="text" class="form-control" id="ownerName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dailyLimit" class="form-label">Daily Request Limit</label>
+                        <input type="number" class="form-control" id="dailyLimit" value="1000" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expiryDays" class="form-label">Expiry (Days)</label>
+                        <input type="number" class="form-control" id="expiryDays" value="30" min="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createApiKey()">Create API Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+{% endblock %}
