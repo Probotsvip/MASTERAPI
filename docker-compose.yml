@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  flaks-music-api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - SESSION_SECRET=${SESSION_SECRET}
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - flaks-network
+
+networks:
+  flaks-network:
+    driver: bridge

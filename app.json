@@ -1,0 +1,53 @@
+{
+  "name": "Flaks Music API",
+  "description": "Fast, reliable music streaming API with 320kbps quality for Telegram bots and apps",
+  "repository": "https://github.com/yourusername/flaks-music-api",
+  "logo": "https://avatars.githubusercontent.com/u/yourusername?v=4",
+  "keywords": [
+    "music",
+    "api",
+    "streaming",
+    "jiosaavn",
+    "telegram",
+    "bot",
+    "320kbps",
+    "flask",
+    "python"
+  ],
+  "stack": "heroku-22",
+  "env": {
+    "MONGO_URI": {
+      "description": "MongoDB connection string (MongoDB Atlas recommended)",
+      "value": "mongodb+srv://username:password@cluster.mongodb.net/database",
+      "required": true
+    },
+    "SESSION_SECRET": {
+      "description": "Secret key for Flask sessions (generate a random string)",
+      "generator": "secret",
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "python -m pytest"
+      }
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Deployment completed! Access admin panel at /admin/login with admin:admin123'"
+  },
+  "success_url": "/admin/login"
+}
